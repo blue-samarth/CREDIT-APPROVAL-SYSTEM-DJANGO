@@ -8,18 +8,19 @@ class Customer(models.Model):
     """
     Customer model for storing customer information.
     """
-    customer_id: str = models.AutoField(primary_key=True)
-    first_name: str = models.CharField(max_length=50)
-    last_name: str = models.CharField(max_length=50)
-    age: int = models.PositiveIntegerField(validators=[MinValueValidator(18), MaxValueValidator(100)])
-    phone_number: str = models.CharField(max_length=15, unique=True, null=False, db_index=True)
-    monthly_income: Decimal = models.DecimalField(max_digits=12, decimal_places=2, null=False, validators=[MinValueValidator(Decimal('0.00'))])
-    approved_credit_limit: Decimal = models.DecimalField(max_digits=15, decimal_places=2, null=False, validators=[MinValueValidator(Decimal('0.00'))])
-    current_debt: Decimal = models.DecimalField(max_digits=15, decimal_places=2, null=False, default=Decimal('0.00'), validators=[MinValueValidator(Decimal('0.00'))])
-    is_active: bool = models.BooleanField(default=True, db_index=True)
-    deleted_at: timezone = models.DateTimeField(null=True, blank=True)
-    created_at: timezone = models.DateTimeField(auto_now_add=True)
-    updated_at: timezone = models.DateTimeField(auto_now=True)
+    customer_id = models.AutoField(primary_key=True)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    age = models.PositiveIntegerField(validators=[MinValueValidator(18), MaxValueValidator(100)])
+    phone_number = models.CharField(max_length=15, unique=True, null=False, db_index=True)
+    monthly_income = models.DecimalField(max_digits=12, decimal_places=2, null=False, validators=[MinValueValidator(Decimal('0.00'))])
+    approved_credit_limit = models.DecimalField(max_digits=15, decimal_places=2, null=False, validators=[MinValueValidator(Decimal('0.00'))])
+    current_debt = models.DecimalField(max_digits=15, decimal_places=2, null=False, default=Decimal('0.00'), validators=[MinValueValidator(Decimal('0.00'))])
+    is_active = models.BooleanField(default=True, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
 
     class Meta:
         db_table = "customers"
