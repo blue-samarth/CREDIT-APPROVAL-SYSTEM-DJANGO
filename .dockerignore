@@ -1,0 +1,56 @@
+# Docker context ignore - keep images small and avoid sensitive files
+
+# Git
+.git
+.gitignore
+
+# Python caches
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv
+.venv
+env
+ENV
+venv.bak
+
+# SQLite DB
+db.sqlite3
+db.sqlite3-journal
+
+# Django media and static files
+media
+staticfiles
+static
+
+# IDE/editor files
+.vscode
+.idea
+
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build
+dist
+*.egg-info
+
+# Docker Compose override
+docker-compose.override.yml
+
+# Environment files
+.env
+.env.*
+
+# Secrets
+secrets
+*.pem
+*.key
+
+# Other
+*.log

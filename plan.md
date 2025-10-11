@@ -21,11 +21,11 @@ uv init credit-approval-system
 cd credit-approval-system
 
 # Set Python version
-echo "3.11" > .python-version
+echo "3.13" > .python-version
 
 # Add dependencies
 uv add django djangorestframework psycopg2-binary
-uv add celery redis python-decouple
+uv add celery redis
 uv add openpyxl pandas gunicorn
 
 # Create Django project (using uv run)
@@ -44,14 +44,13 @@ mv loans apps/
 name = "credit-approval-system"
 version = "0.1.0"
 description = "Credit approval system with Django"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "django>=4.2,<5.0",
     "djangorestframework>=3.14",
     "psycopg2-binary>=2.9",
     "celery>=5.3",
     "redis>=5.0",
-    "python-decouple>=3.8",
     "openpyxl>=3.1",
     "pandas>=2.1",
     "gunicorn>=21.2",
@@ -78,7 +77,7 @@ credit-approval-system/
 ├── Dockerfile                  # Django app container
 ├── pyproject.toml              # uv project configuration
 ├── uv.lock                     # Locked dependencies
-├── .python-version             # Python version (3.11)
+├── .python-version             # Python version (3.13)
 ├── config/                     # Django project settings
 │   ├── settings.py
 │   ├── urls.py
@@ -105,7 +104,8 @@ credit-approval-system/
 - **psycopg2-binary**: PostgreSQL adapter
 - **celery + redis**: Background tasks
 - **openpyxl/pandas**: Excel parsing (pandas for robust data handling)
-- **python-decouple**: Environment config management
+
+**Environment Variables**: Use Docker Compose `.env` file or direct environment variables (no python-decouple needed)
 
 **Why uv?**
 - 10-100x faster than pip for installs
