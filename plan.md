@@ -7,14 +7,78 @@
 
 ---
 
-## Phase 1: Infrastructure Setup (3-4 hours)
+## Phase 1: Infrastructure Setup (2-3 hours)
 
-### 1.1 Project Structure
+### 1.1 Project Initialization with uv
+
+**Setup Steps**:
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Initialize uv project
+uv init credit-approval-system
+cd credit-approval-system
+
+# Set Python version
+echo "3.11" > .python-version
+
+# Add dependencies
+uv add django djangorestframework psycopg2-binary
+uv add celery redis python-decouple
+uv add openpyxl pandas gunicorn
+
+# Create Django project (using uv run)
+uv run django-admin startproject config .
+
+# Create app directories
+uv run python manage.py startapp customers
+uv run python manage.py startapp loans
+mv customers apps/
+mv loans apps/
+```
+
+**pyproject.toml Structure**:
+```toml
+[project]
+name = "credit-approval-system"
+version = "0.1.0"
+description = "Credit approval system with Django"
+requires-python = ">=3.11"
+dependencies = [
+    "django>=4.2,<5.0",
+    "djangorestframework>=3.14",
+    "psycopg2-binary>=2.9",
+    "celery>=5.3",
+    "redis>=5.0",
+    "python-decouple>=3.8",
+    "openpyxl>=3.1",
+    "pandas>=2.1",
+    "gunicorn>=21.2",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4",
+    "pytest-django>=4.5",
+]
+```
+
+**Benefits of uv**:
+- **Speed**: 10-100x faster than pip for installs
+- **Lock file**: `uv.lock` ensures reproducible builds across machines
+- **No venv management**: uv handles virtual environments automatically
+- **Docker optimization**: Better layer caching with uv
+- **Conflict resolution**: Better dependency resolver than pip
+
+### 1.2 Project Structure
 ```
 credit-approval-system/
 ├── docker-compose.yml          # Orchestrate all services
 ├── Dockerfile                  # Django app container
-├── requirements.txt            # Python dependencies
+├── pyproject.toml              # uv project configuration
+├── uv.lock                     # Locked dependencies
+├── .python-version             # Python version (3.11)
 ├── config/                     # Django project settings
 │   ├── settings.py
 │   ├── urls.py
@@ -35,12 +99,19 @@ credit-approval-system/
 
 **Key Decision**: Use health checks in docker-compose to ensure proper service startup order (DB → Redis → Web → Celery)
 
-### 1.3 Dependencies Strategy
+### 1.3 Dependencies Strategy (using `uv`)
+- **uv**: Ultra-fast Python package installer and resolver
 - **Django 4.2** + **DRF 3.14**: Core framework
 - **psycopg2-binary**: PostgreSQL adapter
 - **celery + redis**: Background tasks
 - **openpyxl/pandas**: Excel parsing (pandas for robust data handling)
 - **python-decouple**: Environment config management
+
+**Why uv?**
+- 10-100x faster than pip for installs
+- Better dependency resolution
+- Built-in virtual environment management
+- Lock file for reproducible builds
 
 ---
 
@@ -453,7 +524,14 @@ Loan.objects.filter(customer_id=customer_id, loan_approved=True)
 
 **Test Command**:
 ```bash
+# Build and start all services
 docker-compose up --build
+
+# Run data ingestion
+docker-compose exec web uv run python manage.py ingest_data
+
+# Check service status
+docker-compose ps
 ```
 
 **Verification Steps**:
@@ -462,6 +540,17 @@ docker-compose up --build
 3. Data ingestion completes successfully
 4. All API endpoints respond correctly
 5. Celery worker processes tasks
+
+**Quick API Tests**:
+```bash
+# Test registration
+curl -X POST http://localhost:8000/register \
+  -H "Content-Type: application/json" \
+  -d '{"first_name":"John","last_name":"Doe","age":30,"monthly_income":50000,"phone_number":"9876543210"}'
+
+# Test view loans
+curl http://localhost:8000/view-loans/1
+```
 
 ### 8.3 Common Issues & Solutions
 
@@ -482,14 +571,42 @@ docker-compose up --build
 # Credit Approval System
 
 ## Setup
-- Prerequisites
-- Environment variables
-- Docker installation
+- Prerequisites: Docker, Docker Compose
+- No local Python/uv installation needed (handled by Docker)
 
 ## Running the Application
-- docker-compose up
-- Accessing API (http://localhost:8000)
-- Running data ingestion
+```bash
+# Start all services
+docker-compose up --build
+
+# Run data ingestion
+docker-compose exec web uv run python manage.py ingest_data
+
+# Access API
+http://localhost:8000
+
+# View logs
+docker-compose logs -f web
+```
+
+## Local Development (with uv)
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and setup
+git clone <repo>
+cd credit-approval-system
+
+# Install dependencies (uv handles venv automatically)
+uv sync
+
+# Run migrations
+uv run python manage.py migrate
+
+# Start dev server
+uv run python manage.py runserver
+```
 
 ## API Documentation
 - Endpoint list with examples
@@ -523,15 +640,22 @@ docker-compose up --build
 
 ### 10.1 Pre-Submission Verification
 
-- [ ] `docker-compose up` works from scratch
+- [ ] `docker-compose up --build` works from scratch
 - [ ] All 6 endpoints return correct responses
 - [ ] Data ingestion completes without errors
 - [ ] No hardcoded values (use environment variables)
 - [ ] Code is clean and organized
 - [ ] README has clear setup instructions
 - [ ] Git history shows incremental progress
-- [ ] `.gitignore` excludes sensitive files
-- [ ] Requirements.txt is complete
+- [ ] `.gitignore` excludes `.venv/`, `uv.lock` committed
+- [ ] `pyproject.toml` has all dependencies
+- [ ] Both `pyproject.toml` and `uv.lock` are committed
+
+**uv-specific checks**:
+- [ ] `.python-version` file exists
+- [ ] `uv sync` works on fresh clone
+- [ ] Docker build uses uv correctly
+- [ ] All commands in README use `uv run` prefix
 
 ### 10.2 Known Limitations to Document
 
@@ -545,46 +669,53 @@ docker-compose up --build
 
 ## Time Allocation Summary
 
-| Phase | Hours | Priority |
-|-------|-------|----------|
-| Infrastructure Setup | 3-4 | Critical |
-| Data Models | 2-3 | Critical |
-| Data Ingestion | 3-4 | Critical |
-| Credit Score Engine | 3-4 | Critical |
-| API Endpoints | 8-10 | Critical |
-| Service Layer | 2 | Critical |
-| Testing | 2-3 | Important |
-| Docker & Deployment | 2 | Critical |
-| Documentation | 1-2 | Important |
-| **Total** | **26-35** | |
+| Phase | Hours | Priority | uv Impact |
+|-------|-------|----------|-----------|
+| Infrastructure Setup | 2-3 | Critical | ⚡ -1 hour (faster setup) |
+| Data Models | 2-3 | Critical | Same |
+| Data Ingestion | 3-4 | Critical | Same |
+| Credit Score Engine | 3-4 | Critical | Same |
+| API Endpoints | 8-10 | Critical | Same |
+| Service Layer | 2 | Critical | Same |
+| Testing | 2-3 | Important | Same |
+| Docker & Deployment | 2 | Critical | ⚡ Faster builds |
+| Documentation | 1-2 | Important | Same |
+| **Total** | **25-34** | | **Saved 1-2 hours** |
 
-**Buffer**: 10-14 hours for debugging, breaks, unexpected issues
+**Buffer**: 11-15 hours for debugging, breaks, unexpected issues
 
 ---
 
 ## Key Technical Decisions
 
-### 1. Why Celery over Django-Q?
+### 1. Why uv over pip/poetry?
+- **Speed**: 10-100x faster installs (crucial for Docker rebuilds)
+- **Simplicity**: No manual venv management
+- **Modern**: Uses Rust, actively developed by Astral (ruff creators)
+- **Lock file**: Guaranteed reproducible builds
+- **Docker-friendly**: Official Docker images, better caching
+
+### 2. Why Celery over Django-Q?
 - Industry standard
 - Better documentation
 - Redis already needed for caching
 
-### 2. Why Pandas over openpyxl alone?
+### 3. Why Pandas over openpyxl alone?
 - Robust data cleaning
 - Better handling of malformed data
 - Easier data type conversion
 
-### 3. Why Service Layer?
+### 4. Why Service Layer?
 - Testability
 - Reusability (/check-eligibility and /create-loan share logic)
 - Clean separation of concerns
 
-### 4. Why Decimal over Float for money?
+### 5. Why Decimal over Float for money?
 - Precision in financial calculations
 - No floating-point errors
 - Industry best practice
 
-### 5. Database Indexes Strategy
+### 6. Database Indexes Strategy
 - Index foreign keys (customer in loans)
 - Index frequently filtered fields (loan_approved, dates)
 - Composite indexes for common query patterns
