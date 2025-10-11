@@ -1,0 +1,84 @@
+# Git ignore for a Django/Python project
+# Reference: https://github.com/github/gitignore/blob/main/Python.gitignore
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+venv.bak/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.tox/
+*.tox/
+.nox/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# If using Django collectstatic
+# static/  # uncomment if you commit static files to repo and want to ignore built assets
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Encrypted secrets, credentials and env files
+.env
+.env.*
+secrets/
+instance/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# mypy
+.mypy_cache/
+
+# Editor backups and OS files
+*~
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker Compose local override
+docker-compose.override.yml
+
+# Other
+*.pem
+*.key
