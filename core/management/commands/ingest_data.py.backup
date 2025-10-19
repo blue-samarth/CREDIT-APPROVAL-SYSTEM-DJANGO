@@ -1,0 +1,150 @@
+import os
+import pandas as pd
+
+from decimal import Decimal
+from django.core.management.base import BaseCommand
+from django.db import transaction
+
+from apps.customers.models import Customer
+from apps.loans.models import Loan
+
+
+class Command(BaseCommand):
+    help: str = "Ingests customer and/or loan data from Excel files into the database."
+
+    def add_arguments(self, parser) -> None:
+        parser.add_argument(
+            '--customers',
+            type=str,
+            default="data/customer_data.xlsx",
+            help='Path to the Excel file containing customer data.'
+        )
+        parser.add_argument(
+            '--loans',
+            type=str,
+            default="data/loan_data.xlsx",
+            help='Path to the Excel file containing loan data.'
+        )
+
+    def handle(self, *args, **options) -> None:
+        customers_file: str = options['customers']
+        loans_file: str = options['loans']
+
+        if not os.path.exists(customers_file):
+            self.stderr.write(self.style.ERROR(f"Customers file not found: {customers_file}"))
+            return
+        if not os.path.exists(loans_file):
+            self.stderr.write(self.style.ERROR(f"Loans file not found: {loans_file}"))
+            return
+
+        self.stdout.write(self.style.SUCCESS("Starting data ingestion..."))
+
+        try:
+            customer_df = pd.read_excel(customers_file)
+            loan_df = pd.read_excel(loans_file)
+
+            customer_df.columns = [col.strip().lower().replace(" ", "_") for col in customer_df.columns]
+            loan_df.columns = [col.strip().lower().replace(" ", "_") for col in loan_df.columns]
+
+            customer_df = customer_df.rename(columns={
+                "monthly_salary": "monthly_income",
+                "approved_limit": "approved_credit_limit"
+            })
+            
+            # Rename loan columns to match expected names
+            loan_df = loan_df.rename(columns={
+                "tenure": "term_months",
+                "emis_paid_on_time": "monthly_payments_made_on_time",
+                "date_of_approval": "loan_approved_date"
+            })
+            # Keep customer_id as is for lookup
+            
+            # Debug: Print column names
+            self.stdout.write(self.style.SUCCESS(f"Customer columns: {list(customer_df.columns)}"))
+            self.stdout.write(self.style.SUCCESS(f"Loan columns: {list(loan_df.columns)}"))
+            
+        except Exception as e:
+            self.stderr.write(self.style.ERROR(f"Error reading Excel files: {e}"))
+            return
+
+        customers_created = 0
+        loans_created = 0
+
+        with transaction.atomic():
+            for _, row in customer_df.iterrows():
+                try:
+                    customer, created = Customer.objects.get_or_create(
+                        customer_id=row['customer_id'],  # Use customer_id as primary lookup
+                        defaults={
+                            "phone_number": row['phone_number'],
+                            "first_name": row['first_name'].strip(),
+                            "last_name": row['last_name'].strip(),
+                            "age": int(row['age']),
+                            "monthly_income": Decimal(str(row['monthly_income'])),
+                            "approved_credit_limit": Decimal(str(row['approved_credit_limit'])),
+                            "current_debt": Decimal('0.00'),
+                            "is_active": True
+                        }
+                    )
+                    if created:
+                        customers_created += 1
+                except Exception as e:
+                    self.stderr.write(self.style.ERROR(f"Error creating customer {row.get('customer_id', '')}: {e}"))
+
+        # --- Loan ingestion ---
+        with transaction.atomic():
+            for _, row in loan_df.iterrows():
+                try:
+                    # Check if customer_id column exists
+                    if 'customer_id' not in row or pd.isna(row['customer_id']):
+                        self.stderr.write(
+                            self.style.WARNING(
+                                f"Missing customer_id in row. Available columns: {list(row.keys())}"
+                            )
+                        )
+                        continue
+                    
+                    customer = Customer.objects.get(customer_id=int(row['customer_id']))
+                    
+                    # Check if loan_approved_date exists and is valid
+                    loan_approved = False
+                    if 'loan_approved_date' in row and pd.notna(row['loan_approved_date']):
+                        loan_approved = True
+                    
+                    loan, created = Loan.objects.get_or_create(
+                        loan_id=row['loan_id'],
+                        defaults={
+                            'customer_id': customer,
+                            'loan_amount': Decimal(str(row['loan_amount'])),
+                            'interest_rate': Decimal(str(row['interest_rate'])),
+                            'term_months': int(row['term_months']),
+                            'monthly_payment': Decimal(str(row.get('monthly_payment', 0))),
+                            'monthly_payment_due_date': int(row.get('monthly_payment_due_date', 1)),
+                            'loan_approved': loan_approved,
+                            'end_date': pd.to_datetime(row['end_date']),
+                            'monthly_payments_made_on_time': int(row.get('monthly_payments_made_on_time', 0)),
+                            'is_active': bool(row.get('is_active', True)),
+                        }
+                    )
+                    if created:
+                        loans_created += 1
+                except Customer.DoesNotExist:
+                    self.stderr.write(
+                        self.style.WARNING(
+                            f"Customer with customer_id {row.get('customer_id', '')} not found. Skipping loan entry."
+                        )
+                    )
+                except KeyError as e:
+                    self.stderr.write(
+                        self.style.ERROR(
+                            f"Missing required column {e} in loan data. Available columns: {list(row.keys())}"
+                        )
+                    )
+                except Exception as e:
+                    self.stderr.write(
+                        self.style.ERROR(f"Error creating loan for customer_id {row.get('customer_id', '')}: {e}")
+                    )
+
+        self.stdout.write(self.style.SUCCESS(f"Customers created: {customers_created}"))
+        self.stdout.write(self.style.SUCCESS(f"Loans created: {loans_created}"))
+        self.stdout.write(self.style.SUCCESS("Data ingestion completed successfully."))
