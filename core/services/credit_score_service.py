@@ -106,7 +106,7 @@ class CreditScoreService:
             return 20
         elif recent_loans_count <= 4:
             return 15
-        elif recent_loans_count >= 5:
+        else:
             return 5
         
     @staticmethod

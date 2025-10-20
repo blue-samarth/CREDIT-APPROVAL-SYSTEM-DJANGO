@@ -5,8 +5,8 @@ from django.db.models import Sum
 
 from apps.customers.models import Customer
 from apps.loans.models import Loan
-from .credit_score_service import CreditScoreService
-from .emi_calculator_service import EMICalculatorService
+from core.services.credit_score_service import CreditScoreService
+from core.services.emi_calculator_service import EMICalculatorService
 
 class LoanEligibilityService:
     """
