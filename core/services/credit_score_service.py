@@ -87,13 +87,13 @@ class CreditScoreService:
         Component 3: Current Year Activity (20 points)
         
         Scoring:
-            0 loans this year: 20 points (excellent)
-            1-2 loans:         15 points (good)
-            3-4 loans:         10 points (moderate)
-            5+ loans:           5 points (risky)
+            No activity:  5 points (inactive)
+            1-2 loans:   20 points (optimal)
+            3-4 loans:   15 points (moderate)
+            5+ loans:    10 points (high activity = risk)
         
         Args:
-            loans: QuerySet of active loans
+            loans: QuerySet of all loans (active and inactive)
         Returns:
             Score (0-20)
         """
@@ -106,8 +106,8 @@ class CreditScoreService:
             return 20
         elif recent_loans_count <= 4:
             return 15
-        elif recent_loans_count >= 5:
-            return 5
+        else:
+            return 10
         
     @staticmethod
     def _calculate_loan_volume_score(customer: Customer, loans: QuerySet) -> int:
@@ -183,8 +183,8 @@ class CreditScoreService:
         if cls._check_approved_limit_override(customer, active_loans): return {'score': Decimal('0'), 'approval': False}
 
         payment_history_score = cls._calculate_payment_history_score(all_loans)
-        loan_count_score = cls._calculate_loan_count_score(active_loans)
-        current_year_activity_score = cls._calculate_current_year_activity_score(active_loans)
+        loan_count_score = cls._calculate_loan_count_score(all_loans)
+        current_year_activity_score = cls._calculate_current_year_activity_score(all_loans)
         loan_volume_score = cls._calculate_loan_volume_score(customer, active_loans)
 
         total_score: Decimal = (
@@ -193,6 +193,19 @@ class CreditScoreService:
             Decimal(current_year_activity_score) +
             Decimal(loan_volume_score)
         )
+
+        # Apply payment reliability multiplier penalty for poor payment history
+        if all_loans.exists():
+            total_emis_expected: int = all_loans.aggregate(total=Sum('term_months'))['total'] or 1
+            total_emis_paid: int = all_loans.aggregate(total=Sum('monthly_payments_made_on_time'))['total'] or 0
+            payment_reliability: Decimal = Decimal(total_emis_paid) / Decimal(total_emis_expected)
+            
+            if payment_reliability < Decimal('0.30'):
+                total_score = total_score * Decimal('0.15')
+            elif payment_reliability < Decimal('0.50'):
+                total_score = total_score * Decimal('0.35')
+            elif payment_reliability < Decimal('0.80'):
+                total_score = total_score * Decimal('0.50')
 
         approval: bool = total_score >= Decimal('50')
 
