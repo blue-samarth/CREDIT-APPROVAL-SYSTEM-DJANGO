@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-y(wip%=3bqe^nhfv6(a11mo=v$(zy3%f5p7i8*=kk-$$yo1-14'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-y(wip%=3bqe^nhfv6(a11mo=v$(zy3%f5p7i8*=kk-$$yo1-14')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -77,12 +78,47 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Get DATABASE_URL from environment or use SQLite for development
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL and DATABASE_URL.startswith('postgresql'):
+    # Parse PostgreSQL URL for Docker/Production
+    # Format: postgresql://user:password@host:port/dbname
+    import re
+    match = re.match(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', DATABASE_URL)
+    if match:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': match.group(5),
+                'USER': match.group(1),
+                'PASSWORD': match.group(2),
+                'HOST': match.group(3),
+                'PORT': match.group(4),
+                'CONN_MAX_AGE': 600,
+            }
+        }
+    else:
+        # Fallback if URL parsing fails
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.getenv('POSTGRES_DB', 'creditcards'),
+                'USER': os.getenv('POSTGRES_USER', 'postgres'),
+                'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
+                'HOST': os.getenv('POSTGRES_HOST', 'db'),
+                'PORT': os.getenv('POSTGRES_PORT', '5432'),
+                'CONN_MAX_AGE': 600,
+            }
+        }
+else:
+    # Use SQLite for local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
 
 
 # Password validation
@@ -151,3 +187,8 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
     'NON_FIELD_ERRORS_KEY': 'error',
 }
+
+# Celery Configuration
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', REDIS_URL)
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', REDIS_URL)
