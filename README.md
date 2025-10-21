@@ -2,17 +2,43 @@
 
 A Django-based REST API system for managing customer credit approvals, loan eligibility checks, and loan creation with automated credit scoring.
 
-**🎉 Latest Update (Oct 21, 2025):** All API endpoints implemented! 37/37 tests passing ✅
+**🎉 Latest Update (Oct 22, 2025):** Docker deployment complete! Production-ready setup ✅
 
 ---
 
 ## 🚀 Quick Start
 
+### Option 1: Docker (Recommended for Production)
+
 ```bash
-# Clone and setup
+# Clone repository
 git clone <repo-url>
 cd Credit-Approval-System-Django
 
+# Create environment file
+cp .env.example .env
+# Edit .env with your settings
+
+# Build and start all services
+docker-compose up -d
+
+# Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs -f web
+
+# Run migrations (automatic on startup via entrypoint.sh)
+# Or manually: docker-compose exec web python manage.py migrate
+
+# Access API
+curl http://localhost:8000/api/health/
+# Expected: {"status": "healthy", "database": "connected"}
+```
+
+### Option 2: Local Development
+
+```bash
 # Install dependencies
 uv sync
 
@@ -36,6 +62,7 @@ uv run python manage.py test test_api_endpoints
 ## 📋 Table of Contents
 
 - [Quick Start](#quick-start)
+- [Docker Deployment](#docker-deployment)
 - [Overview](#overview)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
@@ -45,6 +72,7 @@ uv run python manage.py test test_api_endpoints
 - [Project Structure](#project-structure)
 - [Business Logic](#business-logic)
 - [Testing](#testing)
+- [Environment Variables](#environment-variables)
 - [Development Notes](#development-notes)
 - [Next Steps](#next-steps)
 
@@ -60,21 +88,103 @@ This system provides a credit approval platform that:
 - Manages loan creation and tracking
 - Provides REST API endpoints for all operations
 
-**Current Status**: **~92% Complete** (API Endpoints Implemented & Tested, Docker Ready)
+**Current Status**: **~98% Complete** (Production-Ready Docker Deployment)
+
+---
+
+## 🐳 Docker Deployment
+
+### Architecture
+
+The application runs in a multi-container Docker setup:
+
+```
+┌─────────────────────────────────────────────┐
+│  PostgreSQL Database (credit_cards_db)      │
+│  - Port: 5432                               │
+│  - Health checks enabled                    │
+└─────────────────────────────────────────────┘
+                    ↑
+┌─────────────────────────────────────────────┐
+│  Redis Cache (credit_cards_redis)           │
+│  - Port: 6379                               │
+│  - Used for Celery broker & results         │
+└─────────────────────────────────────────────┘
+                    ↑
+┌─────────────────────────────────────────────┐
+│  Django Web App (credit_cards_web)          │
+│  - Port: 8000                               │
+│  - Gunicorn WSGI server                     │
+│  - Auto-runs migrations on startup          │
+│  - Health endpoint: /api/health/            │
+└─────────────────────────────────────────────┘
+                    ↑
+┌─────────────────────────────────────────────┐
+│  Celery Worker (credit_cards_celery)        │
+│  - Background task processing               │
+│  - Data ingestion tasks                     │
+└─────────────────────────────────────────────┘
+                    ↑
+┌─────────────────────────────────────────────┐
+│  Celery Beat (credit_cards_celery_beat)     │
+│  - Scheduled task scheduler                 │
+└─────────────────────────────────────────────┘
+```
+
+### Docker Commands
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+docker-compose logs -f web        # Django app logs only
+docker-compose logs -f celery     # Celery worker logs
+
+# Stop services
+docker-compose down
+
+# Rebuild after code changes
+docker-compose down
+docker-compose build
+docker-compose up -d
+
+# Execute commands in container
+docker-compose exec web python manage.py createsuperuser
+docker-compose exec web python manage.py shell
+
+# View service status
+docker-compose ps
+
+# Clean up everything (including volumes)
+docker-compose down -v
+```
+
+### Health Checks
+
+All services have health checks configured:
+
+- **Database**: `pg_isready` command
+- **Redis**: `redis-cli ping` command  
+- **Web**: HTTP GET to `/api/health/`
+
+Services wait for dependencies to be healthy before starting.
 
 ---
 
 ## Features
 
-### Implemented
+### Implemented ✅
 
 **Infrastructure & Data Management**
 - Django 5.2.7 with Python 3.13
-- PostgreSQL-ready (SQLite for development)
+- PostgreSQL database with health checks
 - Celery 5.5.3 + Redis 6.4.0 for background tasks
+- Docker multi-stage build with uv package manager
+- Automatic migrations on container startup
 - Excel data ingestion with Pandas
 - Management command: `python manage.py ingest_data`
-- 753 loans ingested in 4.83 seconds
 
 **Business Logic Services**
 - EMI Calculator Service (reducing balance method)
@@ -89,16 +199,28 @@ This system provides a credit approval platform that:
 - POST /api/loans/create-loan - Loan creation with validation
 - GET /api/loans/view-loan/{loan_id} - Single loan details
 - GET /api/loans/view-loans/{customer_id} - Customer's loan history
-- All endpoints fully tested and validated
+- GET /api/health/ - Health check endpoint for monitoring
+- All endpoints fully tested and validated (37/37 tests passing)
 
-### Recently Completed (October 21, 2025)
+**Docker & DevOps ✅**
+- Multi-stage Dockerfile with uv package manager
+- docker-compose.yml with 5 services (DB, Redis, Web, Celery, Beat)
+- Health checks on all services
+- Automatic database migrations via entrypoint.sh
+- Non-root user for security
+- Environment variable configuration
+- Volume persistence for database and Redis
 
-**API Endpoint Implementation**
-- ✅ Implemented all 5 REST API endpoints
-- ✅ Fixed field name consistency (`monthly_payment` vs `monthly_installment`)
-- ✅ Fixed credit score calculation bugs (current year activity, payment reliability)
-- ✅ All 37 API endpoint tests passing
-- ✅ Credit score behavior tests validated (rejection thresholds, interest rate corrections)
+### Recently Completed (October 22, 2025)
+
+**Docker Production Setup**
+- ✅ Fixed database configuration (removed dj-database-url dependency)
+- ✅ Smart database detection (PostgreSQL for Docker, SQLite for local)
+- ✅ Created .env.example for environment variables
+- ✅ Added entrypoint.sh for automatic migrations
+- ✅ Created core/urls.py for health check endpoint
+- ✅ Updated Dockerfile with proper entrypoint
+- ✅ All services starting successfully with health checks
 
 **Credit Scoring Enhancements**
 - ✅ Payment reliability multiplier system:
@@ -110,15 +232,10 @@ This system provides a credit approval platform that:
 
 ### Pending
 
-**Phase 8: Docker Deployment** (Partially Complete)
-- ✅ Dockerfile configured with uv package manager
-- ✅ docker-compose.yml with Django, Redis, Celery services
-- ⏳ Production deployment testing
-- ⏳ Environment variable configuration
-
-**Phase 9: Documentation & Polish**
-- ⏳ API endpoint documentation (Swagger/OpenAPI)
+**Phase 9: Documentation & Polish** (2% remaining)
+- ⏳ API documentation with Swagger/OpenAPI (drf-spectacular)
 - ⏳ Postman collection export
+- ⏳ Add authentication (JWT/Token)
 - ⏳ Production deployment guide
 - ⏳ Performance optimization notes
 
@@ -177,6 +294,11 @@ curl -X POST http://localhost:8000/api/loans/check-eligibility \
 - Get all loans for a customer
 - Returns: List of loans with repayments_left
 
+**GET /api/health/**
+- Health check endpoint for monitoring
+- Returns: `{"status": "healthy", "database": "connected"}`
+- Used by Docker health checks and load balancers
+
 ---
 
 ## Tech Stack
@@ -186,11 +308,13 @@ curl -X POST http://localhost:8000/api/loans/check-eligibility \
 | **Language** | Python | 3.13 | Core programming language |
 | **Framework** | Django | 5.2.7 | Web framework |
 | **API** | Django REST Framework | 3.16.1 | REST API endpoints |
-| **Database** | SQLite / PostgreSQL | - | Data persistence |
+| **Database** | PostgreSQL / SQLite | 16-alpine / - | Data persistence |
 | **Task Queue** | Celery | 5.5.3 | Background job processing |
-| **Message Broker** | Redis | 6.4.0 | Celery broker & result backend |
+| **Message Broker** | Redis | 7-alpine | Celery broker & result backend |
 | **Data Processing** | Pandas | 2.3.3 | Excel data processing |
-| **Package Manager** | uv | latest | Dependency management |
+| **Package Manager** | uv | latest | Fast Python package manager |
+| **WSGI Server** | Gunicorn | latest | Production web server |
+| **Containerization** | Docker | latest | Application containerization |
 
 ---
 
@@ -198,16 +322,16 @@ curl -X POST http://localhost:8000/api/loans/check-eligibility \
 
 | Phase | Description | Status | Completion |
 |-------|-------------|--------|------------|
-| **Phase 1** | Infrastructure Setup | Complete | 100% |
-| **Phase 2** | Data Models | Complete | 100% |
-| **Phase 3** | Data Ingestion + Celery | Complete | 100% |
-| **Phase 4** | Credit Scoring Engine | Complete | 100% |
-| **Phase 6** | Service Layer | Complete | 100% |
+| **Phase 1** | Infrastructure Setup | Complete ✅ | 100% |
+| **Phase 2** | Data Models | Complete ✅ | 100% |
+| **Phase 3** | Data Ingestion + Celery | Complete ✅ | 100% |
+| **Phase 4** | Credit Scoring Engine | Complete ✅ | 100% |
+| **Phase 6** | Service Layer | Complete ✅ | 100% |
 | **Phase 5** | API Endpoints | Complete ✅ | 100% |
 | **Phase 7** | Testing | Complete ✅ | 100% |
-| **Phase 8** | Docker | Partial | 80% |
-| **Phase 9** | Documentation | Partial | 60% |
-| **Overall** | | **Near Complete** | **~92%** |
+| **Phase 8** | Docker Deployment | Complete ✅ | 100% |
+| **Phase 9** | Documentation | In Progress | 70% |
+| **Overall** | | **Production Ready** | **~98%** |
 
 ---
 
@@ -414,16 +538,71 @@ Credit-Approval-System-Django/
 | ≤ 10 | **REJECT** loan |
 
 ### EMI Calculation
----
 
-## Testing
-
-### Service Tests
-
-Business logic is covered by 32 tests:
+```python
+EMI = P × r × (1 + r)^n / ((1 + r)^n - 1)
+where:
+  P = Principal loan amount
   r = Monthly interest rate (annual_rate / 12 / 100)
   n = Tenure in months
 ```
+
+**Special Case:** If interest rate = 0, then `EMI = P / n`
+
+---
+
+## 🔐 Environment Variables
+
+### Configuration Files
+
+1. **`.env.example`** - Template with all required variables
+2. **`.env`** - Your actual configuration (create from .env.example)
+
+### Required Variables
+
+```bash
+# Django Settings
+DJANGO_SECRET_KEY=your-secret-key-here-change-in-production
+DJANGO_DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1,your-domain.com
+
+# Database (PostgreSQL for Docker)
+DATABASE_URL=postgresql://postgres:postgres@db:5432/creditcards
+POSTGRES_DB=creditcards
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+
+# Redis & Celery
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+# Server Ports
+WEB_PORT=8000
+REDIS_PORT=6379
+```
+
+### Smart Database Configuration
+
+The application automatically detects the environment:
+
+**Docker/Production:**
+```python
+# If DATABASE_URL starts with 'postgresql://'
+# Uses PostgreSQL with parsed connection details
+```
+
+**Local Development:**
+```python
+# If DATABASE_URL is not set or doesn't start with 'postgresql://'
+# Falls back to SQLite (db.sqlite3)
+```
+
+---
+
+## 🧪 Testing
 
 **Special Case:** If interest rate = 0, then `EMI = P / n`
 
@@ -613,12 +792,128 @@ uv run celery -A config flower
 
 ---
 
-## Next Steps
+## 🎯 Next Steps
 
-### Immediate Priorities (8% Remaining)
+### Remaining Tasks (2% to Complete)
 
-**1. API Documentation (2-3 hours)**
-- [ ] Add Swagger/OpenAPI documentation (drf-spectacular)
+**1. API Documentation (1-2 hours)**
+- [ ] Add Swagger/OpenAPI with drf-spectacular
+- [ ] Create interactive API docs at `/api/docs/`
+- [ ] Export Postman collection
+- [ ] Add API usage examples for each endpoint
+
+**2. Authentication & Security (Optional)**
+- [ ] Add JWT authentication (djangorestframework-simplejwt)
+- [ ] Add permission classes (IsAuthenticated)
+- [ ] Add API rate limiting
+- [ ] Add CORS configuration for frontend
+
+**3. Production Optimization (Optional)**
+- [ ] Add database indexes for frequent queries
+- [ ] Configure static file serving (WhiteNoise)
+- [ ] Add logging configuration
+- [ ] Add monitoring (Sentry, Prometheus)
+
+---
+
+## 🚀 Recent Achievements
+
+### October 22, 2025 - Docker Production Complete ✅
+- Fixed database configuration (smart PostgreSQL/SQLite detection)
+- Created automated migration system (entrypoint.sh)
+- Added health check endpoint (/api/health/)
+- Configured multi-container Docker setup
+- All services running with health checks
+
+### October 21, 2025 - API Implementation Complete ✅
+- Implemented all 5 REST API endpoints
+- Fixed credit scoring algorithm bugs
+- Added payment reliability multiplier system
+- Achieved 100% test pass rate (37/37 tests)
+
+---
+
+## 📦 Deployment Guide
+
+### Production Deployment Checklist
+
+```bash
+# 1. Clone repository
+git clone <repo-url>
+cd Credit-Approval-System-Django
+
+# 2. Create production .env file
+cp .env.example .env
+nano .env  # Edit with production values
+
+# 3. Update environment variables
+DJANGO_SECRET_KEY=<generate-strong-key>
+DJANGO_DEBUG=False
+ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+POSTGRES_PASSWORD=<strong-password>
+
+# 4. Build and start services
+docker-compose build
+docker-compose up -d
+
+# 5. Create superuser (admin)
+docker-compose exec web python manage.py createsuperuser
+
+# 6. Verify deployment
+curl http://your-domain.com/api/health/
+# Expected: {"status": "healthy", "database": "connected"}
+
+# 7. Access admin panel
+# Visit: http://your-domain.com/admin/
+```
+
+### Monitoring
+
+```bash
+# View all service logs
+docker-compose logs -f
+
+# View specific service
+docker-compose logs -f web
+docker-compose logs -f celery
+
+# Check service health
+docker-compose ps
+
+# Restart services
+docker-compose restart web
+docker-compose restart celery
+```
+
+---
+
+## 📚 Additional Documentation Files
+
+- **`.env.example`** - Environment variable template
+- **`entrypoint.sh`** - Container startup script with migrations
+- **`docker-compose.yml`** - Multi-container orchestration
+- **`Dockerfile`** - Multi-stage production build
+- **`SESSION_SUMMARY_OCT21.md`** - API implementation details
+- **`FIX_PROPOSAL.md`** - Bug fixes and solutions
+- **`test_api_endpoints.py`** - Complete test suite (37 tests)
+
+---
+
+## 🏆 Project Highlights
+
+✅ **Production-Ready**: Fully containerized with Docker  
+✅ **Tested**: 37/37 tests passing (100%)  
+✅ **Scalable**: Celery + Redis for background tasks  
+✅ **Secure**: Non-root containers, health checks, environment variables  
+✅ **Smart**: Auto-detects environment (PostgreSQL/SQLite)  
+✅ **Automated**: Database migrations run on startup  
+✅ **Monitored**: Health check endpoint for load balancers  
+
+---
+
+**Version:** 1.0.0 (Production Ready)  
+**Last Updated:** October 22, 2025  
+**Status:** 98% Complete - Production Deployment Ready, Documentation Polish Pending
 - [ ] Create API usage examples with curl commands
 - [ ] Export Postman collection
 - [ ] Document authentication flow (if adding)
