@@ -47,16 +47,14 @@ class LoanEligibilityAPIView(APIView):
             'approval': eligibility_result['approval'],
             'interest_rate': eligibility_result['interest_rate'],
             'corrected_interest_rate': eligibility_result['corrected_interest_rate'],
-            'tenure': validated_data['term_months'],  # Use 'tenure' not 'tenure_months'
-            'monthly_installment': eligibility_result['monthly_installment'],
+            'term_months': validated_data['term_months'],
+            'monthly_payment': eligibility_result['monthly_payment'],
+            'reason': eligibility_result.get('message', 'Loan approved.')
         }
 
-        if not response_data['approval']:
-            response_data['reason'] = response_data['message']
-        response_data['reason'] = response_data.pop('message')
-
-        response_serializer = LoanEligibilityResponseSerializer(instance=response_data)
-        return Response(response_serializer.data, status=status.HTTP_200_OK)
+        response_serializer = LoanEligibilityResponseSerializer(data=response_data)
+        response_serializer.is_valid(raise_exception=True)
+        return Response(response_serializer.validated_data, status=status.HTTP_200_OK)
     
 class LoanCreationView(APIView):
     def post(self, request):

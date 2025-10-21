@@ -48,7 +48,7 @@ class LoanCreationService:
                 'customer_id': customer_id,
                 'loan_approved': False,
                 'message': eligibility_response.get('message', 'Loan not approved based on credit evaluation'),
-                'monthly_installment': Decimal('0.00')
+                'monthly_payment': Decimal('0.00')
             }
 
         try:
@@ -62,7 +62,7 @@ class LoanCreationService:
                     loan_amount=loan_amount,
                     interest_rate=eligibility_response['corrected_interest_rate'],
                     term_months=term_months,
-                    monthly_installment=eligibility_response['monthly_installment'],
+                    monthly_payment=eligibility_response['monthly_payment'],
                     monthly_payment_due_date=5,
                     start_date=today,
                     end_date=end_date,
@@ -80,7 +80,7 @@ class LoanCreationService:
                     'term_months': loan.term_months,
                     'loan_approved': True,
                     'message': 'Loan successfully created',
-                    'monthly_installment': loan.monthly_payment
+                    'monthly_payment': loan.monthly_payment
                 }
         except Customer.DoesNotExist:
             return {
@@ -88,5 +88,5 @@ class LoanCreationService:
                 'customer_id': customer_id,
                 'loan_approved': False,
                 'message': 'Customer does not exist',
-                'monthly_installment': Decimal('0.00')
+                'monthly_payment': Decimal('0.00')
             }

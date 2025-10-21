@@ -127,7 +127,7 @@ class LoanEligibilityService:
                 'credit_score': credit_score,
                 'interest_rate': interest_rate,
                 'corrected_interest_rate': corrected_rate,
-                'monthly_installment': Decimal('0.00'),
+                'monthly_payment': Decimal('0.00'),
                 'message': rate_message,
                 'tenure_months': tenure_months
             }
@@ -141,7 +141,7 @@ class LoanEligibilityService:
                 'credit_score': credit_score,
                 'interest_rate': interest_rate,
                 'corrected_interest_rate': corrected_rate,
-                'monthly_installment': Decimal('0.00'),
+                'monthly_payment': Decimal('0.00'),
                 'message': emi_message,
                 'tenure_months': tenure_months
             }
@@ -154,7 +154,7 @@ class LoanEligibilityService:
             'credit_score': credit_score,
             'interest_rate': interest_rate,
             'corrected_interest_rate': corrected_rate,
-            'monthly_installment': monthly_installment,
+            'monthly_payment': monthly_installment,
             'message': "Loan approved.",
             'tenure_months': tenure_months
         }

@@ -15,22 +15,22 @@ class CustomerSerializer(serializers.Serializer):
         return value
     
     def create(self, validated_data: dict) -> Customer:
+        # Calculate approved limit: 36 * monthly_income, rounded to nearest lakh (100,000)
+        monthly_income = validated_data['monthly_income']
+        approved_limit = round(monthly_income * 36, -5)
+        
         customer = Customer.objects.create(
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
             age=validated_data['age'],
-            monthly_income=validated_data['monthly_income'],
+            monthly_income=monthly_income,
             phone_number=validated_data['phone_number'],
-            approved_credit_limit=Decimal('0.00'),
+            approved_credit_limit=approved_limit,
         )
-        customer.approved_credit_limit = customer.calculate_approved_credit_limit()
-        customer.save()
         return customer
     
 class CustomerResponseSerializer(serializers.ModelSerializer):
-    customer_id: int = serializers.IntegerField(source='pk', read_only=True)
-    monthly_income: Decimal = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    approved_credit_limit: Decimal = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+    customer_id = serializers.IntegerField(source='pk', read_only=True)
 
     class Meta:
         model = Customer
@@ -39,11 +39,7 @@ class CustomerResponseSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'age',
-            'monthly_income',
             'phone_number',
+            'monthly_income',
             'approved_credit_limit',
-            'current_debt',
-            'is_active',
-            'created_at',
-            'updated_at'
         ]

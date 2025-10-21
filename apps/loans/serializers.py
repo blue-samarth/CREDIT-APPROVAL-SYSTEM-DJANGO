@@ -10,20 +10,17 @@ class CustomerBasicSerializer(serializers.ModelSerializer):
         model = Customer
         fields = ['id', 'first_name', 'last_name', 'phone_number']
 
-class LoanDetailSerializer(serializers.Serializer):
-    loan_id = serializers.IntegerField(read_only=True)
-    customer_id = serializers.IntegerField(source='customer.customer_id', read_only=True)
-    loan_amount = serializers.DecimalField(max_digits=15, decimal_places=2)
-    term_months = serializers.IntegerField()
-
+class LoanDetailSerializer(serializers.ModelSerializer):
+    customer_id = serializers.IntegerField(source='customer_id.customer_id', read_only=True)
+    
     class Meta:
         model = Loan
         fields = [
             'loan_id',
             'customer_id',
             'loan_amount',
-            'term_months',
             'interest_rate',
+            'term_months',
             'monthly_payment',
         ]
 
@@ -43,9 +40,21 @@ class LoanCreateSerializer(serializers.ModelSerializer):
 
 class LoanEligibilityRequestSerializer(serializers.Serializer):
     customer_id = serializers.IntegerField()
-    loan_amount = serializers.DecimalField(max_digits=15, decimal_places=2)
-    term_months = serializers.IntegerField()
-    interest_rate = serializers.DecimalField(max_digits=5, decimal_places=2)
+    loan_amount = serializers.DecimalField(
+        max_digits=15, 
+        decimal_places=2,
+        min_value=Decimal('100.00')
+    )
+    term_months = serializers.IntegerField(
+        min_value=1,
+        max_value=360
+    )
+    interest_rate = serializers.DecimalField(
+        max_digits=5, 
+        decimal_places=2,
+        min_value=Decimal('0.00'),
+        max_value=Decimal('100.00')
+    )
 
     def validate_customer_id(self, value):
         if not Customer.objects.filter(customer_id=value, is_active=True).exists():
@@ -53,13 +62,13 @@ class LoanEligibilityRequestSerializer(serializers.Serializer):
         return value
     
 class LoanEligibilityResponseSerializer(serializers.Serializer):
-    customer_id: int = serializers.IntegerField()
-    approval: bool = serializers.BooleanField()
-    interest_rate: Decimal = serializers.DecimalField(max_digits=5, decimal_places=2)
-    tenure: int = serializers.IntegerField()
-    corrected_interest_rate: Decimal = serializers.DecimalField(max_digits=5, decimal_places=2)
-    monthly_installment: Decimal = serializers.DecimalField(max_digits=15, decimal_places=2)
-    tenure_months: int = serializers.IntegerField()
+    customer_id = serializers.IntegerField()
+    approval = serializers.BooleanField()
+    interest_rate = serializers.DecimalField(max_digits=5, decimal_places=2)
+    corrected_interest_rate = serializers.DecimalField(max_digits=5, decimal_places=2)
+    monthly_payment = serializers.DecimalField(max_digits=15, decimal_places=2)
+    term_months = serializers.IntegerField()
+    reason = serializers.CharField()
 
 
 class LoanCreationRequestSerializer(serializers.Serializer):
@@ -82,4 +91,4 @@ class LoanCreationResponseSerializer(serializers.Serializer):
     message: str = serializers.CharField()
     interest_rate: Decimal = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
     term_months: int = serializers.IntegerField(required=False)
-    monthly_installment = serializers.DecimalField(max_digits=15, decimal_places=2)
+    monthly_payment = serializers.DecimalField(max_digits=15, decimal_places=2)
